@@ -37,12 +37,20 @@ public class Repository<TEntity>(DbContext context) : IRepository<TEntity>
 
     public Task UpdateAsync(TEntity entity)
     {
+        if (_context.Entry(entity).State == EntityState.Detached)
+        {
+            _dbSet.Attach(entity);
+        }
         _dbSet.Update(entity);
         return Task.CompletedTask;
     }
 
     public Task DeleteAsync(TEntity entity)
     {
+        if (_context.Entry(entity).State == EntityState.Detached)
+        {
+            _dbSet.Attach(entity);
+        }
         _dbSet.Remove(entity);
         return Task.CompletedTask;
     }

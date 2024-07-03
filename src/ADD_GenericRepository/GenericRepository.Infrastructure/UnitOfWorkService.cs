@@ -19,11 +19,10 @@ public class UnitOfWorkService : IUnitOfWorkService
     public IRepository<TEntity> GetRepository<TEntity>() where TEntity : class
     {
         var type = typeof(TEntity);
-        if (!_repositories.ContainsKey(type))
-        {
-            _repositories[type] = new Repository<TEntity>(_context);
-        }
-        return (IRepository<TEntity>)_repositories[type];
+        if (_repositories.TryGetValue(type, out var value)) return (IRepository<TEntity>)value;
+        value = new Repository<TEntity>(_context);
+        _repositories[type] = value;
+        return (IRepository<TEntity>)value;
     }
 
     public void Dispose()

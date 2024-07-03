@@ -15,4 +15,8 @@
       <ProjectReference Include="..\GenericRepository.Domain\GenericRepository.Domain.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="GenericRepository.Infrastructure.csproj.DotSettings" />
+    </ItemGroup>
+
 </Project>

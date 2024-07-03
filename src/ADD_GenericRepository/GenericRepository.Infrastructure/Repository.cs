@@ -8,7 +8,6 @@ public class Repository<TEntity>(DbContext context) : IRepository<TEntity>
     where TEntity : class
 {
     private readonly DbSet<TEntity> _dbSet = context.Set<TEntity>();
-    private readonly DbContext _context = context;
 
     public IQueryable<TEntity> GetQueryable()
     {
@@ -37,7 +36,7 @@ public class Repository<TEntity>(DbContext context) : IRepository<TEntity>
 
     public Task UpdateAsync(TEntity entity)
     {
-        if (_context.Entry(entity).State == EntityState.Detached)
+        if (context.Entry(entity).State == EntityState.Detached)
         {
             _dbSet.Attach(entity);
         }
@@ -47,7 +46,7 @@ public class Repository<TEntity>(DbContext context) : IRepository<TEntity>
 
     public Task DeleteAsync(TEntity entity)
     {
-        if (_context.Entry(entity).State == EntityState.Detached)
+        if (context.Entry(entity).State == EntityState.Detached)
         {
             _dbSet.Attach(entity);
         }

@@ -2,7 +2,7 @@
 believe me you will never need to write a single Repository again by using this generic repository
 
 ## Repository
-**Important: If your purpose is to read-only, then Repository is enough, that's why you will not see SaveChanges methods in there **
+**Important: If your purpose is to read-only, then Repository is enough, that's why you will not see SaveChanges methods in there, go with UoW when you need writing, then **
  
 ## Dependency injection
 If you just want to work with repository, don't care about UoW

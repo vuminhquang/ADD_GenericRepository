@@ -1,4 +1,7 @@
-# ADD_GenericRepository, believe me you will never need to write a single Repository again by using this
+# ADD_GenericRepository
+believe me you will never need to write a single Repository again by using this generic repository
+
+## Dependency injection
 
 ## Include
 
@@ -29,9 +32,6 @@ var includePath = blogs
     .ThenInclude(c => c.Likes)
     .Include(b => b.Posts)
     .ThenInclude(p => p.Tags);
-
-// Execute the include paths
-IncludeExecutor.ExecuteIncludes(context.Blogs, includePath); // context.Blog is the DbSet
 
 // Execute with the repository
 var result = await repository.IncludeExecute(includeTree).ToListAsync(); // full DbSet

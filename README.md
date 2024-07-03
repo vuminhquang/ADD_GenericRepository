@@ -1,4 +1,4 @@
-# ADD_GenericRepository
+# ADD_GenericRepository, believe me you will never need to write a single Repository again by using this
 
 ## Context
 

@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericRepository.Domain", "GenericRepository.Domain\GenericRepository.Domain.csproj", "{DECC1E44-51A6-4CB0-9B0E-60666FD196FE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericRepository.Infrastructure", "GenericRepository.Infrastructure\GenericRepository.Infrastructure.csproj", "{547DB140-9BAE-4661-AAF1-F09AF9D0D925}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestUsing", "TestUsing\TestUsing.csproj", "{BF17F1C0-2882-4FBA-AC98-C50FAB50D058}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DECC1E44-51A6-4CB0-9B0E-60666FD196FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DECC1E44-51A6-4CB0-9B0E-60666FD196FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DECC1E44-51A6-4CB0-9B0E-60666FD196FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DECC1E44-51A6-4CB0-9B0E-60666FD196FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{547DB140-9BAE-4661-AAF1-F09AF9D0D925}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{547DB140-9BAE-4661-AAF1-F09AF9D0D925}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{547DB140-9BAE-4661-AAF1-F09AF9D0D925}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{547DB140-9BAE-4661-AAF1-F09AF9D0D925}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF17F1C0-2882-4FBA-AC98-C50FAB50D058}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF17F1C0-2882-4FBA-AC98-C50FAB50D058}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF17F1C0-2882-4FBA-AC98-C50FAB50D058}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF17F1C0-2882-4FBA-AC98-C50FAB50D058}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

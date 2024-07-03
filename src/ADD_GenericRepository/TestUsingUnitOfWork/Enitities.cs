@@ -1,4 +1,4 @@
-namespace TestUsing;
+namespace TestUsingUnitOfWork;
 
 public class Blog
 {

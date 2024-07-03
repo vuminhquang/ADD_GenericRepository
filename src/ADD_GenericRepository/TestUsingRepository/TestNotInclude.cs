@@ -2,7 +2,7 @@ using GenericRepository.Domain;
 using GenericRepository.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
-namespace TestUsing;
+namespace TestUsingRepository;
 
 public class TestNotInclude
 {

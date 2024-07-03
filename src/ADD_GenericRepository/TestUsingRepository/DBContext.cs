@@ -1,6 +1,6 @@
-namespace TestUsing;
-
 using Microsoft.EntityFrameworkCore;
+
+namespace TestUsingRepository;
 
 public class BloggingContext : DbContext
 {

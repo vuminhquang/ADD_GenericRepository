@@ -1,18 +1,18 @@
 using GenericRepository.Domain;
 using GenericRepository.Infrastructure;
-
-namespace TestUsing;
-
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
-public class IncludeExecutorTests
+namespace TestUsingRepository;
+
+public class RepositoryIncludeExecuteTests
 {
     private BloggingContext CreateContext()
     {
-        var context = new BloggingContext();
+        var options = new DbContextOptionsBuilder<BloggingContext>()
+            .UseInMemoryDatabase(databaseName: "TestDatabase")
+            .Options;
+
+        var context = new BloggingContext(options);
 
         // Add test data
         context.Blogs.Add(new Blog
@@ -54,46 +54,32 @@ public class IncludeExecutorTests
     }
 
     [Fact]
-    public void TestIncludeExecutor()
+    public async Task TestIncludeExecuteWithoutComments()
     {
         using (var context = CreateContext())
         {
-            var blogs = new IncludeTree<Blog>();
+            var repository = new Repository<Blog>(context);
 
-            var includePath = blogs
-                .Include(b => b.Posts)
-                .ThenInclude((Post p) => p.Comments)
-                .ThenInclude((Comment c) => c.Replies)
-                .Include(b => b.Posts)
-                .ThenInclude((Post p) => p.Comments)
-                .ThenInclude((Comment c) => c.Likes)
+            var includeTree = new IncludeTree<Blog>()
                 .Include(b => b.Posts)
                 .ThenInclude((Post p) => p.Tags);
 
-            var result = IncludeExecutor.ExecuteIncludes(context.Blogs, includePath).ToList();
+            var result = await repository.IncludeExecute(repository.GetQueryable().AsNoTracking(), includeTree).ToListAsync();
 
             // Asserts
             Assert.Single(result);
             var blog = result.First();
             Assert.Equal("http://sample.com", blog.Url);
             Assert.Single(blog.Posts);
-            
+
             var post = blog.Posts.First();
             Assert.Equal("First Post", post.Title);
-            Assert.Single(post.Comments);
-            Assert.Single(post.Tags);
-            
-            var comment = post.Comments.First();
-            Assert.Equal("First Comment", comment.Content);
-            Assert.Single(comment.Replies);
-            Assert.Single(comment.Likes);
-            
-            var reply = comment.Replies.First();
-            Assert.Equal("First Reply", reply.Content);
-            
-            var like = comment.Likes.First();
-            Assert.Equal(1, like.LikeId);
 
+            // Assert that Comments is not included and is null
+            Assert.Null(post.Comments);
+
+            // Assert that Tags are included
+            Assert.Single(post.Tags);
             var tag = post.Tags.First();
             Assert.Equal("Tag1", tag.Name);
         }

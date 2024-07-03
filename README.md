@@ -2,6 +2,11 @@
 believe me you will never need to write a single Repository again by using this generic repository
 
 ## Dependency injection
+If you just want to work with repository, don't care about UoW
+```csharp
+// Register the generic repository
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+```
 
 ## Include
 

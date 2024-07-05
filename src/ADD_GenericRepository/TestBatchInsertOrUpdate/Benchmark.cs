@@ -60,7 +60,7 @@ namespace GenericRepository.Infrastructure.Tests
             await _context.SaveChangesAsync();
 
             var stopwatch = Stopwatch.StartNew();
-            await _unitOfWorkService.BulkInsertAsync(_entities, 1000000);
+            await _unitOfWorkService.BulkInsertAsync(_entities, 1000);
             stopwatch.Stop();
 
             var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;

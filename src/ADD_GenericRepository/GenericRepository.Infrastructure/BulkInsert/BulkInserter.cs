@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -26,13 +27,28 @@ public class BulkInserter<T> where T : class
                 await AddOrUpdateRelatedEntities(entity);
             }
 
-            for (int i = 0; i < entityList.Count; i += batchSize)
+            // Generate SQL statements in parallel
+            var sqlTasks = new List<Task<string>>();
+
+            for (var i = 0; i < entityList.Count; i += batchSize)
             {
                 var batch = entityList.GetRange(i, Math.Min(batchSize, entityList.Count - i));
-                var sql = GenerateInsertSql(batch);
-
-                await _context.Database.ExecuteSqlRawAsync(sql);
+                sqlTasks.Add(Task.Run(() => GenerateInsertSql(batch)));
             }
+
+            // Wait for all SQL generation tasks to complete
+            var sqlStatements = await Task.WhenAll(sqlTasks);
+
+            // Execute the generated SQL statements sequentially or in parallel
+            var executeTasks = new ConcurrentBag<Task<int>>();
+
+            // use parallel.foreach to create a task for each sql statement
+            Parallel.ForEach(sqlStatements, sql =>
+            {
+                executeTasks.Add(_context.Database.ExecuteSqlRawAsync(sql));
+            });
+            
+            await Task.WhenAll(executeTasks);
 
             await transaction.CommitAsync();
         }

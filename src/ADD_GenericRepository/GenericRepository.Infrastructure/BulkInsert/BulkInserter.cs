@@ -19,7 +19,7 @@ public class BulkInserter<T> where T : class
     {
         var entityList = new List<T>(entities);
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
             foreach (var entity in entityList)
@@ -43,7 +43,12 @@ public class BulkInserter<T> where T : class
             var executeTasks = new ConcurrentBag<Task<int>>();
 
             // use parallel.foreach to create a task for each sql statement
-            Parallel.ForEach(sqlStatements, sql =>
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Environment.ProcessorCount
+            };
+
+            Parallel.ForEach(sqlStatements, parallelOptions, sql =>
             {
                 executeTasks.Add(_context.Database.ExecuteSqlRawAsync(sql));
             });

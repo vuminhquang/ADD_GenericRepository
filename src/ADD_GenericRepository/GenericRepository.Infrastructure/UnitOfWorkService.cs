@@ -282,6 +282,7 @@ public class UnitOfWorkService : IUnitOfWorkService
             DateTime date => $"'{date:yyyy-MM-dd HH:mm:ss}'",
             DateTimeOffset dateOffset => $"'{dateOffset:yyyy-MM-dd HH:mm:ss}'",
             bool boolValue => boolValue ? "1" : "0",
+            Guid guidValue => $"'{guidValue}'",
             _ => value.ToString() ?? "NULL"
         };
     }

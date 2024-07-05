@@ -16,6 +16,6 @@ public class TestDbContext : DbContext
 
 public class TestEntity
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string Name { get; set; }
 }

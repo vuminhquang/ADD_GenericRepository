@@ -2,92 +2,96 @@ using System.Diagnostics;
 using EFCore.BulkExtensions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Xunit;
 using Xunit.Abstractions;
 
-namespace GenericRepository.Infrastructure.Tests;
-
-public class UnitOfWorkServiceBenchmarkTests : IDisposable
+namespace GenericRepository.Infrastructure.Tests
 {
-    private readonly ITestOutputHelper _testOutputHelper;
-    private readonly DbContextOptions<TestDbContext> _contextOptions;
-    private readonly TestDbContext _context;
-    private readonly UnitOfWorkService _unitOfWorkService;
-    private readonly List<TestEntity> _entities;
-
-    public UnitOfWorkServiceBenchmarkTests(ITestOutputHelper testOutputHelper)
+    public class UnitOfWorkServiceBenchmarkTests : IDisposable
     {
-        _testOutputHelper = testOutputHelper;
-        var connectionStringBuilder = new SqliteConnectionStringBuilder { DataSource = ":memory:" };
-        var connection = new SqliteConnection(connectionStringBuilder.ToString());
+        private readonly ITestOutputHelper _testOutputHelper;
+        private readonly DbContextOptions<TestDbContext> _contextOptions;
+        private readonly TestDbContext _context;
+        private readonly UnitOfWorkService _unitOfWorkService;
+        private readonly List<TestEntity> _entities;
 
-        _contextOptions = new DbContextOptionsBuilder<TestDbContext>()
-            .UseSqlite(connection)
-            .Options;
-
-        _context = new TestDbContext(_contextOptions);
-        _context.Database.OpenConnection();
-        _context.Database.EnsureCreated();
-
-        _unitOfWorkService = new UnitOfWorkService(_context);
-
-        _entities = Enumerable.Range(1, 1000000).Select(i => new TestEntity { Id = i, Name = $"Entity{i}" }).ToList();
-    }
-
-    [Fact]
-    public async Task Benchmark_BatchInsertOrUpdateAsync()
-    {
-        var repository = _unitOfWorkService.GetRepository<TestEntity>();
-
-        foreach (var entity in _entities)
+        public UnitOfWorkServiceBenchmarkTests(ITestOutputHelper testOutputHelper)
         {
-            await repository.AddAsync(entity);
+            _testOutputHelper = testOutputHelper;
+            var connectionStringBuilder = new SqliteConnectionStringBuilder { DataSource = ":memory:" };
+            var connection = new SqliteConnection(connectionStringBuilder.ToString());
+
+            _contextOptions = new DbContextOptionsBuilder<TestDbContext>()
+                .UseSqlite(connection)
+                .Options;
+
+            _context = new TestDbContext(_contextOptions);
+            _context.Database.OpenConnection();
+            _context.Database.EnsureCreated();
+
+            _unitOfWorkService = new UnitOfWorkService(_context);
+
+            _entities = Enumerable.Range(1, 1000000).Select(i => new TestEntity { Id = Guid.NewGuid(), Name = $"Entity{i}" }).ToList();
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        await _unitOfWorkService.BatchInsertOrUpdateAsync();
-        stopwatch.Stop();
-
-        var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-        _testOutputHelper.WriteLine($"BatchInsertOrUpdateAsync: {elapsedMilliseconds} ms");
-    }
-
-    [Fact]
-    public async Task Benchmark_SaveChangesAsync()
-    {
-        var repository = _unitOfWorkService.GetRepository<TestEntity>();
-
-        foreach (var entity in _entities)
+        [Fact]
+        public async Task Benchmark_SaveChangesAsync()
         {
-            await repository.AddAsync(entity);
+            var repository = _unitOfWorkService.GetRepository<TestEntity>();
+
+            foreach (var entity in _entities)
+            {
+                await repository.AddAsync(entity);
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+            await _unitOfWorkService.SaveChangesAsync();
+            stopwatch.Stop();
+
+            var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            _testOutputHelper.WriteLine($"SaveChangesAsync: {elapsedMilliseconds} ms");
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        await _unitOfWorkService.SaveChangesAsync();
-        stopwatch.Stop();
+        [Fact]
+        public async Task Benchmark_BulkInsertAsync()
+        {
+            // Clear the context to avoid any potential conflicts
+            _context.TestEntities.RemoveRange(_context.TestEntities);
+            await _context.SaveChangesAsync();
 
-        var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-        _testOutputHelper.WriteLine($"SaveChangesAsync: {elapsedMilliseconds} ms");
-    }
+            var stopwatch = Stopwatch.StartNew();
+            await _unitOfWorkService.BulkInsertAsync(_entities, 1000000);
+            stopwatch.Stop();
 
-    [Fact]
-    public async Task Benchmark_BulkInsertAsync()
-    {
-        // Clear the context to avoid any potential conflicts
-        _context.TestEntities.RemoveRange(_context.TestEntities);
-        await _context.SaveChangesAsync();
+            var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");
+        }
 
-        var stopwatch = Stopwatch.StartNew();
-        await _context.BulkInsertAsync(_entities);
-        stopwatch.Stop();
+        [Fact]
+        public async Task Benchmark_3rdParty_BulkInsertAsync()
+        {
+            // Clear the context to avoid any potential conflicts
+            _context.TestEntities.RemoveRange(_context.TestEntities);
+            await _context.SaveChangesAsync();
 
-        var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-        _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");
-    }
+            var stopwatch = Stopwatch.StartNew();
+            var insertEntities = _context.ChangeTracker.Entries().Where(e => e.State == EntityState.Added).ToList();
+            await _context.BulkInsertAsync(_entities, config =>
+            {
+                config.BatchSize = 10000;
+            });
+            stopwatch.Stop();
 
-    // Dispose method to close the in-memory SQLite connection
-    public void Dispose()
-    {
-        _context.Database.CloseConnection();
-        _context.Dispose();
+            var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");
+        }
+
+        
+        // Dispose method to close the in-memory SQLite connection
+        public void Dispose()
+        {
+            _context.Database.CloseConnection();
+            _context.Dispose();
+        }
     }
 }

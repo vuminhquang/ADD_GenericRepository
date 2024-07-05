@@ -1,11 +1,15 @@
 # ADD_GenericRepository
-believe me you will never need to write a single Repository again by using this generic repository
+
+Believe me, you will never need to write a single Repository again by using this generic repository.
 
 ## Repository
-**Important: If your purpose is to read-only, then Repository is enough, that's why you will not see SaveChanges methods in there, go with UoW when you need writing, then **
- 
-## Dependency injection
-If you just want to work with repository, don't care about UoW
+
+**Important:** If your purpose is read-only, then the `Repository` is enough, which is why you will not see `SaveChanges` methods in there. Use `UnitOfWorkService` when you need to write data.
+
+## Dependency Injection
+
+If you just want to work with the repository and don't care about the `UnitOfWorkService`:
+
 ```csharp
 // Register the generic repository
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -29,7 +33,7 @@ Below is an example of how to use the `Repository` class with extended `Include`
     - **Tag**
 
 ```csharp
-var blogs = new IncludeTree<Blog>();//Blog is the entity class
+var blogs = new IncludeTree<Blog>(); // Blog is the entity class
 
 var includePath = blogs
     .Include(b => b.Posts)
@@ -48,19 +52,21 @@ var result = await repository.IncludeExecute(repository.GetQueryable().AsNoTrack
 
 ## UnitOfWorkService
 
-The `UnitOfWorkService` class provides a way to manage database transactions and repositories in an efficient and organized manner. This service is built on top of Entity Framework Core and helps in maintaining a consistent and error-free data access layer.
+The `UnitOfWorkService` class provides a way to manage database transactions and repositories efficiently and in an organized manner. This service is built on top of Entity Framework Core and helps maintain a consistent and error-free data access layer.
 
 ### Initializing UnitOfWorkService
 
-First, create an instance of your `DbContext` class and then initialize the `UnitOfWorkService` with it. It is important to
+First, create an instance of your `DbContext` class and then initialize the `UnitOfWorkService` with it. It is important to:
+
 ```csharp
 .AddTransient<DbContext, YourContext>()
 ```
+
 ```csharp
 var collection = new ServiceCollection()
     .AddDbContext<BloggingContext>(options =>
     {
-        //Options for your DbContext
+        // Options for your DbContext
     })
     .AddDbContextFactory<BloggingContext>()
     .AddTransient<DbContext, BloggingContext>()
@@ -114,6 +120,16 @@ Always ensure that the `UnitOfWorkService` is properly disposed of to release re
 unitOfWorkService.Dispose();
 ```
 
+### Batch Insert or Update
+
+The `UnitOfWorkService` also provides a method to handle batch insert or update operations asynchronously:
+
+```csharp
+await unitOfWorkService.BatchInsertOrUpdateAsync(batchSize: 1000);
+```
+
+This method processes added, modified, and deleted entities in batches and executes the corresponding SQL commands.
+
 ### Example
 
 Here is a complete example demonstrating the usage of `UnitOfWorkService`:
@@ -137,42 +153,69 @@ public class YourDbContext : DbContext
     public DbSet<Blog> Blogs { get; set; }
 }
 
-public class Program
+class Program
 {
-    public static void Main()
+    static async Task Main(string[] args)
     {
-        var serviceProvider = new ServiceCollection()
-            .AddDbContext<YourDbContext>(options => options.UseSqlServer("YourConnectionString"))
-            .BuildServiceProvider();
-        
-        using var context = serviceProvider.GetService<YourDbContext>();
-        var unitOfWorkService = new UnitOfWorkService(context);
+        var collection = new ServiceCollection()
+            .AddDbContext<YourDbContext>(options =>
+            {
+                // Configure your DbContext options here
+                options.UseSqlServer("YourConnectionString");
+            })
+            .AddDbContextFactory<YourDbContext>()
+            .AddTransient<DbContext, YourDbContext>()
+            .AddTransient<IUnitOfWorkService, UnitOfWorkService>()
+            .AddTransient<IUnitOfWorkServiceFactory, UnitOfWorkServiceFactory<YourDbContext>>();
 
-        try
-        {
-            unitOfWorkService.BeginTransaction();
+        var serviceProvider = collection.BuildServiceProvider();
 
-            var blogRepository = unitOfWorkService.GetRepository<Blog>();
-            var newBlog = new Blog { Url = "http://example.com" };
-            blogRepository.Add(newBlog);
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var unitOfWorkService = scope.ServiceProvider.GetRequiredService<IUnitOfWorkService>();
 
-            unitOfWorkService.SaveChanges();
-            unitOfWorkService.CommitTransaction();
-        }
-        catch
-        {
-            unitOfWorkService.RollbackTransaction();
-            throw;
-        }
-        finally
-        {
+            try
+            {
+                unitOfWorkService.BeginTransaction();
+
+                var blogRepository = unitOfWorkService.GetRepository<Blog>();
+                var newBlog = new Blog { Url = "http://example.com" };
+                blogRepository.Add(newBlog);
+
+                await unitOfWorkService.SaveChangesAsync();
+                unitOfWorkService.CommitTransaction();
+            }
+            catch
+            {
+                unitOfWorkService.RollbackTransaction();
+                throw;
+            }
+
+            // Batch insert or update example
+            var blogs = new List<Blog>
+            {
+                new Blog { Url = "http://example1.com" },
+                new Blog { Url = "http://example2.com" }
+            };
+
+            foreach (var blog in blogs)
+            {
+                var blogRepository = unitOfWorkService.GetRepository<Blog>();
+                blogRepository.Add(blog);
+            }
+
+            await unitOfWorkService.BatchInsertOrUpdateAsync(batchSize: 1000);
+
             unitOfWorkService.Dispose();
         }
     }
 }
 ```
 
+### Summary
+
+The `UnitOfWorkService` provides a structured way to manage database transactions and repositories while being built on top of Entity Framework Core. This service ensures that database operations are handled efficiently and consistently, reducing the risk of errors and improving code maintainability. By using the `UnitOfWorkService`, developers can focus on the business logic rather than the intricacies of database interactions.
+
 ## License
 
 This project is licensed under the MIT License.
-```

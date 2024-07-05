@@ -134,7 +134,7 @@ namespace GenericRepository.Infrastructure
                 var properties = entityType.GetProperties();
                 var totalBatches = (int)Math.Ceiling((double)group.Count() / batchSize);
 
-                for (int i = 0; i < totalBatches; i++)
+                for (var i = 0; i < totalBatches; i++)
                 {
                     var batch = group.Skip(i * batchSize).Take(batchSize).Select(e => e.Entity).ToList();
                     var insertCommand = BuildInsertCommand(batch, tableName, properties);

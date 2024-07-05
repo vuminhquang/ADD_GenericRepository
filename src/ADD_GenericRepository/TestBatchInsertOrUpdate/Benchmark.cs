@@ -60,7 +60,7 @@ namespace GenericRepository.Infrastructure.Tests
             await _context.SaveChangesAsync();
 
             var stopwatch = Stopwatch.StartNew();
-            await _unitOfWorkService.BulkInsertAsync(_entities, 1000);
+            await _unitOfWorkService.BulkInsertAsync(_entities, 10000);
             stopwatch.Stop();
 
             var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
@@ -75,7 +75,6 @@ namespace GenericRepository.Infrastructure.Tests
             await _context.SaveChangesAsync();
 
             var stopwatch = Stopwatch.StartNew();
-            var insertEntities = _context.ChangeTracker.Entries().Where(e => e.State == EntityState.Added).ToList();
             await _context.BulkInsertAsync(_entities, config =>
             {
                 config.BatchSize = 10000;

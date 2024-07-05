@@ -1,3 +1,4 @@
+using System;
 using GenericRepository.Domain;
 using GenericRepository.Infrastructure;
 using Microsoft.Data.Sqlite;

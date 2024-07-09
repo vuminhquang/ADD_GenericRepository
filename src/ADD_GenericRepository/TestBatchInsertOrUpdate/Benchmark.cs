@@ -84,7 +84,65 @@ namespace GenericRepository.Infrastructure.Tests
             var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
             _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");
         }
+        
+        [Fact]
+        public async Task Benchmark_2_BulkInserts()
+        {
+            // Clear the context to avoid any potential conflicts
+            _context.TestEntities.RemoveRange(_context.TestEntities);
+            await _context.SaveChangesAsync();
 
+            var stopwatch = Stopwatch.StartNew();
+            await _unitOfWorkService.BulkInsertAsync(_entities, 10000);
+            stopwatch.Stop();
+
+            var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");
+        
+            // Clear the context to avoid any potential conflicts
+            // _context.TestEntities.RemoveRange(_context.TestEntities);
+            // await _context.SaveChangesAsync();
+
+            stopwatch = Stopwatch.StartNew();
+            await _context.BulkInsertAsync(_entities, config =>
+            {
+                config.BatchSize = 10000;
+            });
+            stopwatch.Stop();
+
+            elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            _testOutputHelper.WriteLine($"BulkInsert 3rd Party: {elapsedMilliseconds} ms");
+        }
+
+        
+        [Fact]
+        public async Task Benchmark_2_BulkInserts_ChangeOrders()
+        {
+            // Clear the context to avoid any potential conflicts
+            _context.TestEntities.RemoveRange(_context.TestEntities);
+            await _context.SaveChangesAsync();
+
+            var stopwatch = Stopwatch.StartNew();
+            await _context.BulkInsertAsync(_entities, config =>
+            {
+                config.BatchSize = 10000;
+            });
+            stopwatch.Stop();
+
+            var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            _testOutputHelper.WriteLine($"BulkInsert 3rd Party: {elapsedMilliseconds} ms");
+        
+            // Clear the context to avoid any potential conflicts
+            // _context.TestEntities.RemoveRange(_context.TestEntities);
+            // await _context.SaveChangesAsync();
+
+            stopwatch = Stopwatch.StartNew();
+            await _unitOfWorkService.BulkInsertAsync(_entities, 10000);
+            stopwatch.Stop();
+
+            elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");
+        }
         
         // Dispose method to close the in-memory SQLite connection
         public void Dispose()

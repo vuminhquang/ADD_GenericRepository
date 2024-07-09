@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using System.Data;
 using System.Linq.Expressions;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -22,11 +22,6 @@ public class BulkInserter<T> where T : class
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            foreach (var entity in entityList)
-            {
-                await AddOrUpdateRelatedEntities(entity);
-            }
-
             // Generate SQL statements in parallel
             var sqlTasks = new List<Task<string>>();
 
@@ -39,21 +34,27 @@ public class BulkInserter<T> where T : class
             // Wait for all SQL generation tasks to complete
             var sqlStatements = await Task.WhenAll(sqlTasks);
 
-            // Execute the generated SQL statements sequentially or in parallel
-            var executeTasks = new ConcurrentBag<Task<int>>();
+            // Get the underlying connection from the original context
+            var connection = _context.Database.GetDbConnection();
 
-            // use parallel.foreach to create a task for each sql statement
+            // Ensure the connection is open
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            // Use Parallel.ForEach to execute SQL statements in parallel
             var parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount
             };
 
-            Parallel.ForEach(sqlStatements, parallelOptions, sql =>
+            Parallel.ForEach(sqlStatements, sql =>
             {
-                executeTasks.Add(_context.Database.ExecuteSqlRawAsync(sql));
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+                command.ExecuteNonQuery();
             });
-            
-            await Task.WhenAll(executeTasks);
 
             await transaction.CommitAsync();
         }
@@ -61,46 +62,9 @@ public class BulkInserter<T> where T : class
         {
             await transaction.RollbackAsync();
             Console.WriteLine($"Error: {ex.Message}");
+            // Write the exception to file
+            File.WriteAllText("error.txt", ex.ToString());
         }
-    }
-
-    private async Task AddOrUpdateRelatedEntities(T entity)
-    {
-        var entityType = _context.Model.FindEntityType(typeof(T));
-        foreach (var navigation in entityType.GetNavigations())
-        {
-            var relatedEntity = navigation.PropertyInfo.GetValue(entity);
-            if (relatedEntity != null)
-            {
-                var relatedEntityType = relatedEntity.GetType();
-                var relatedEntityEntry = _context.Entry(relatedEntity);
-                if (relatedEntityEntry.State == EntityState.Detached)
-                {
-                    var primaryKey = navigation.ForeignKey.PrincipalKey.Properties.First();
-                    var primaryKeyValue = primaryKey.PropertyInfo.GetValue(relatedEntity);
-
-                    var dbSetMethod = typeof(DbContext).GetMethod(nameof(DbContext.Set), new Type[] { });
-                    var dbSet = dbSetMethod.MakeGenericMethod(relatedEntityType).Invoke(_context, null);
-                    var findAsyncMethod = dbSet.GetType().GetMethod(nameof(DbSet<object>.FindAsync), new[] { typeof(object[]) });
-                    var existingEntityTask = (Task)findAsyncMethod.Invoke(dbSet, new object[] { new object[] { primaryKeyValue } });
-                    await existingEntityTask.ConfigureAwait(false);
-
-                    var existingEntity = existingEntityTask.GetType().GetProperty("Result").GetValue(existingEntityTask);
-
-                    if (existingEntity != null)
-                    {
-                        _context.Entry(existingEntity).CurrentValues.SetValues(relatedEntity);
-                    }
-                    else
-                    {
-                        var addMethod = dbSet.GetType().GetMethod(nameof(DbSet<object>.Add));
-                        addMethod.Invoke(dbSet, new[] { relatedEntity });
-                    }
-                }
-            }
-        }
-
-        await _context.SaveChangesAsync();
     }
 
     private string GenerateInsertSql(List<T> entities)
@@ -156,7 +120,7 @@ public class BulkInserter<T> where T : class
         var convertProperty = Expression.Convert(propertyAccess, typeof(object));
         return Expression.Lambda<Func<T, object>>(convertProperty, parameter).Compile();
     }
-    
+
     private static string FormatValue(object? value)
     {
         if (value == null)

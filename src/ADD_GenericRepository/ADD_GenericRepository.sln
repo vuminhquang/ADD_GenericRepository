@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConcurrentProcessing", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestBatchInsertOrUpdate", "TestBatchInsertOrUpdate\TestBatchInsertOrUpdate.csproj", "{CCEBD309-213C-4AD6-8570-407C01FFB158}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRawSqlRunning", "TestRawSqlRunning\TestRawSqlRunning.csproj", "{560850F0-9D7B-4773-B828-D171DF80BF9C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{CCEBD309-213C-4AD6-8570-407C01FFB158}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CCEBD309-213C-4AD6-8570-407C01FFB158}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CCEBD309-213C-4AD6-8570-407C01FFB158}.Release|Any CPU.Build.0 = Release|Any CPU
+		{560850F0-9D7B-4773-B828-D171DF80BF9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{560850F0-9D7B-4773-B828-D171DF80BF9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{560850F0-9D7B-4773-B828-D171DF80BF9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{560850F0-9D7B-4773-B828-D171DF80BF9C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

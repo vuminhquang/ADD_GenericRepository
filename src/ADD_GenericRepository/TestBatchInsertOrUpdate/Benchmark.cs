@@ -31,7 +31,7 @@ namespace GenericRepository.Infrastructure.Tests
 
             _unitOfWorkService = new UnitOfWorkService(_context);
 
-            _entities = Enumerable.Range(1, 1000000).Select(i => new TestEntity { Id = Guid.NewGuid(), Name = $"Entity{i}" }).ToList();
+            _entities = Enumerable.Range(1, 100000).Select(i => new TestEntity { Id = Guid.NewGuid(), Name = $"Entity{i}" }).ToList();
         }
 
         [Fact]

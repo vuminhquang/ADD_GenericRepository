@@ -68,59 +68,58 @@ public class BulkInserter<T> where T : class
     }
 
     private string GenerateInsertSql(List<T> entities)
+{
+    var entityType = _context.Model.FindEntityType(typeof(T));
+    var tableName = entityType.GetTableName();
+    var schemaName = entityType.GetSchema();
+    var fullTableName = string.IsNullOrEmpty(schemaName) ? tableName : $"{schemaName}.{tableName}";
+
+    var properties = entityType.GetProperties();
+    var columnNames = string.Join(", ", properties.Select(p => p.GetColumnName(StoreObjectIdentifier.Table(tableName, schemaName))));
+    
+    // Precompile value fetchers for all properties
+    var valueFetchers = properties.Select(CreateValueFetcher).ToList();
+
+    var sb = new StringBuilder();
+    sb.Append($"INSERT INTO {fullTableName} ({columnNames}) VALUES ");
+
+    var valuesList = new List<string>(entities.Count);
+
+    foreach (var entity in entities)
     {
-        var entityType = _context.Model.FindEntityType(typeof(T));
-        var tableName = entityType.GetTableName();
-        var schemaName = entityType.GetSchema();
-        var fullTableName = string.IsNullOrEmpty(schemaName) ? tableName : $"{schemaName}.{tableName}";
-
-        var properties = entityType.GetProperties();
-        var columnNames = string.Join(", ", properties.Select(p => p.GetColumnName(StoreObjectIdentifier.Table(tableName, schemaName))));
-
-        var valueFetchers = properties.Select(CreateValueFetcher).ToList();
-
-        var sb = new StringBuilder();
-        sb.Append($"INSERT INTO {fullTableName} ({columnNames}) VALUES ");
-
-        for (int i = 0; i < entities.Count; i++)
-        {
-            var values = valueFetchers.Select(fetcher => fetcher(entities[i])).Select(FormatValue);
-            sb.Append($"({string.Join(", ", values)})");
-
-            if (i < entities.Count - 1)
-            {
-                sb.Append(", ");
-            }
-        }
-
-        sb.Append(";");
-        return sb.ToString();
+        var values = valueFetchers.Select(fetcher => fetcher(entity)).Select(FormatValue);
+        valuesList.Add($"({string.Join(", ", values)})");
     }
 
-    private Func<T, object> CreateValueFetcher(IProperty property)
-    {
-        var parameter = Expression.Parameter(typeof(T), "entity");
-        var propertyAccess = Expression.Property(parameter, property.PropertyInfo);
+    sb.Append(string.Join(", ", valuesList));
+    sb.Append(';');
 
-        if (property.IsForeignKey())
+    return sb.ToString();
+}
+
+private Func<T, object> CreateValueFetcher(IProperty property)
+{
+    var parameter = Expression.Parameter(typeof(T), "entity");
+    var propertyAccess = Expression.Property(parameter, property.PropertyInfo);
+
+    if (property.IsForeignKey())
+    {
+        var foreignKey = property.GetContainingForeignKeys().FirstOrDefault();
+        if (foreignKey != null)
         {
-            var foreignKey = property.GetContainingForeignKeys().FirstOrDefault();
-            if (foreignKey != null)
+            var principalKey = foreignKey.PrincipalKey.Properties.FirstOrDefault();
+            if (principalKey != null)
             {
-                var principalKey = foreignKey.PrincipalKey.Properties.FirstOrDefault();
-                if (principalKey != null)
-                {
-                    var pkProperty = Expression.Property(propertyAccess, principalKey.PropertyInfo);
-                    var convert = Expression.Convert(pkProperty, typeof(object));
-                    return Expression.Lambda<Func<T, object>>(convert, parameter).Compile();
-                }
+                var pkProperty = Expression.Property(propertyAccess, principalKey.PropertyInfo);
+                var convert = Expression.Convert(pkProperty, typeof(object));
+                return Expression.Lambda<Func<T, object>>(convert, parameter).Compile();
             }
         }
-
-        var convertProperty = Expression.Convert(propertyAccess, typeof(object));
-        return Expression.Lambda<Func<T, object>>(convertProperty, parameter).Compile();
     }
 
+    var convertProperty = Expression.Convert(propertyAccess, typeof(object));
+    return Expression.Lambda<Func<T, object>>(convertProperty, parameter).Compile();
+}
     private static string FormatValue(object? value)
     {
         if (value == null)
@@ -135,4 +134,5 @@ public class BulkInserter<T> where T : class
             _ => value.ToString() ?? "NULL"
         };
     }
+    
 }

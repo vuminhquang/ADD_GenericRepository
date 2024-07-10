@@ -59,9 +59,17 @@ namespace GenericRepository.Infrastructure.Tests
             _context.TestEntities.RemoveRange(_context.TestEntities);
             await _context.SaveChangesAsync();
 
+            // Ensure the database is empty before the operation
+            Assert.Equal(0, await _context.TestEntities.CountAsync());
+
+            // Start the stopwatch for benchmarking
             var stopwatch = Stopwatch.StartNew();
             await _unitOfWorkService.BulkInsertAsync(_entities, 10000);
             stopwatch.Stop();
+
+            // Ensure the database has the correct number of entries after the operation
+            _testOutputHelper.WriteLine($"Entities count: {_entities.Count}");
+            Assert.Equal(_entities.Count, await _context.TestEntities.CountAsync());
 
             var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
             _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");
@@ -80,6 +88,10 @@ namespace GenericRepository.Infrastructure.Tests
                 config.BatchSize = 10000;
             });
             stopwatch.Stop();
+            
+            // Ensure the database has the correct number of entries after the operation
+            _testOutputHelper.WriteLine($"Entities count: {_entities.Count}");
+            Assert.Equal(_entities.Count, await _context.TestEntities.CountAsync());
 
             var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
             _testOutputHelper.WriteLine($"BulkInsertAsync: {elapsedMilliseconds} ms");

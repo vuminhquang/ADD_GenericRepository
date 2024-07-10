@@ -68,58 +68,75 @@ public class BulkInserter<T> where T : class
     }
 
     private string GenerateInsertSql(List<T> entities)
-{
-    var entityType = _context.Model.FindEntityType(typeof(T));
-    var tableName = entityType.GetTableName();
-    var schemaName = entityType.GetSchema();
-    var fullTableName = string.IsNullOrEmpty(schemaName) ? tableName : $"{schemaName}.{tableName}";
-
-    var properties = entityType.GetProperties();
-    var columnNames = string.Join(", ", properties.Select(p => p.GetColumnName(StoreObjectIdentifier.Table(tableName, schemaName))));
-    
-    // Precompile value fetchers for all properties
-    var valueFetchers = properties.Select(CreateValueFetcher).ToList();
-
-    var sb = new StringBuilder();
-    sb.Append($"INSERT INTO {fullTableName} ({columnNames}) VALUES ");
-
-    var valuesList = new List<string>(entities.Count);
-
-    foreach (var entity in entities)
     {
-        var values = valueFetchers.Select(fetcher => fetcher(entity)).Select(FormatValue);
-        valuesList.Add($"({string.Join(", ", values)})");
+        var entityType = _context.Model.FindEntityType(typeof(T));
+        var tableName = entityType.GetTableName();
+        var schemaName = entityType.GetSchema();
+        var fullTableName = string.IsNullOrEmpty(schemaName) ? tableName : $"{schemaName}.{tableName}";
+
+        var properties = entityType.GetProperties();
+        var columnNames = string.Join(", ",
+            properties.Select(p => p.GetColumnName(StoreObjectIdentifier.Table(tableName, schemaName))));
+
+        // Precompile value fetchers for all properties
+        var valueFetchers = properties.Select(CreateValueFetcher).ToList();
+
+        var sb = new StringBuilder();
+        sb.Append($"INSERT INTO {fullTableName} ({columnNames}) VALUES ");
+
+        var valuesList = new List<string>(entities.Count);
+
+        foreach (var entity in entities)
+        {
+            var values = valueFetchers.Select(fetcher => fetcher(entity)).Select(FormatValue);
+            valuesList.Add($"({string.Join(", ", values)})");
+        }
+
+        sb.Append(string.Join(", ", valuesList));
+        sb.Append(';');
+
+        return sb.ToString();
     }
 
-    sb.Append(string.Join(", ", valuesList));
-    sb.Append(';');
-
-    return sb.ToString();
-}
-
-private Func<T, object> CreateValueFetcher(IProperty property)
-{
-    var parameter = Expression.Parameter(typeof(T), "entity");
-    var propertyAccess = Expression.Property(parameter, property.PropertyInfo);
-
-    if (property.IsForeignKey())
+    private Func<T, object> CreateValueFetcher(IProperty property)
     {
-        var foreignKey = property.GetContainingForeignKeys().FirstOrDefault();
-        if (foreignKey != null)
+        ArgumentNullException.ThrowIfNull(property);
+        ArgumentNullException.ThrowIfNull(property.PropertyInfo);
+
+        var parameter = Expression.Parameter(typeof(T), "entity");
+        var propertyAccess = Expression.Property(parameter, property.PropertyInfo);
+
+        if (property.IsForeignKey())
         {
-            var principalKey = foreignKey.PrincipalKey.Properties.FirstOrDefault();
-            if (principalKey != null)
+            var foreignKey = property.GetContainingForeignKeys().FirstOrDefault();
+            var principalKey = foreignKey?.PrincipalKey.Properties[0];
+
+            if (principalKey != null && principalKey.PropertyInfo != null)
             {
+                // Debugging information, open it to see the values
+                // Console.WriteLine($"property.PropertyInfo.Name: {property.PropertyInfo.Name}");
+                // Console.WriteLine($"property.PropertyInfo.PropertyType: {property.PropertyInfo.PropertyType}");
+                // Console.WriteLine($"principalKey.PropertyInfo.Name: {principalKey.PropertyInfo.Name}");
+                // Console.WriteLine($"principalKey.PropertyInfo.PropertyType: {principalKey.PropertyInfo.PropertyType}");
+
+                // Check if propertyAccess type is Guid
+                if (propertyAccess.Type == typeof(Guid))
+                {
+                    // Return the Guid value directly
+                    var convertGuid = Expression.Convert(propertyAccess, typeof(object));
+                    return Expression.Lambda<Func<T, object>>(convertGuid, parameter).Compile();
+                }
+
                 var pkProperty = Expression.Property(propertyAccess, principalKey.PropertyInfo);
-                var convert = Expression.Convert(pkProperty, typeof(object));
-                return Expression.Lambda<Func<T, object>>(convert, parameter).Compile();
+                var convertPkProperty = Expression.Convert(pkProperty, typeof(object));
+                return Expression.Lambda<Func<T, object>>(convertPkProperty, parameter).Compile();
             }
         }
+
+        var convertEntityProperty = Expression.Convert(propertyAccess, typeof(object));
+        return Expression.Lambda<Func<T, object>>(convertEntityProperty, parameter).Compile();
     }
 
-    var convertProperty = Expression.Convert(propertyAccess, typeof(object));
-    return Expression.Lambda<Func<T, object>>(convertProperty, parameter).Compile();
-}
     private static string FormatValue(object? value)
     {
         if (value == null)
@@ -134,5 +151,5 @@ private Func<T, object> CreateValueFetcher(IProperty property)
             _ => value.ToString() ?? "NULL"
         };
     }
-    
+
 }
